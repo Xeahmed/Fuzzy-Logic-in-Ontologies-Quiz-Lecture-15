@@ -1,0 +1,657 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script>```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 15: Fuzzy Logic in Ontologies Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to bottom, #f0f0f0, #ffffff);
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(to bottom, #333, #000);
+            color: #ddd;
+        }
+
+        header, footer {
+            background: #007BFF;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+        }
+
+        header p, footer p {
+            font-size: 1rem;
+        }
+
+        #dark-mode-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        #dark-mode-toggle:hover {
+            background: #0056b3;
+        }
+
+        #quiz-container {
+            flex: 1;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        #progress {
+            height: 100%;
+            background: #28a745;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        #question-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s ease;
+        }
+
+        body.dark-mode #question-container {
+            background: #444;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #question-text {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .option {
+            display: block;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            background: #f8f9fa;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        body.dark-mode .option {
+            background: #555;
+        }
+
+        .option:hover {
+            background: #e9ecef;
+        }
+
+        body.dark-mode .option:hover {
+            background: #666;
+        }
+
+        input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+
+        #submit-btn, #next-btn {
+            padding: 0.8rem 1.5rem;
+            margin: 1rem 0.5rem 0 0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        #submit-btn {
+            background: #007BFF;
+            color: white;
+        }
+
+        #submit-btn:hover {
+            animation: bounce 0.3s;
+            background: #0056b3;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        #next-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        #next-btn:hover {
+            background: #218838;
+        }
+
+        #feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 5px;
+            direction: rtl;
+            font-size: 1rem;
+            display: none;
+        }
+
+        #feedback.correct {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        #feedback.wrong {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        #score-container {
+            display: none;
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        body.dark-mode #score-container {
+            background: #444;
+        }
+
+        #score-container p {
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+            direction: rtl;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            #quiz-container {
+                padding: 1rem;
+            }
+
+            #question-text {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header h1 {
+                font-size: 1.2rem;
+            }
+
+            header p, footer p {
+                font-size: 0.9rem;
+            }
+
+            #dark-mode-toggle {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+
+            #question-container {
+                padding: 1rem;
+            }
+
+            #question-text {
+                font-size: 0.9rem;
+            }
+
+            .option {
+                padding: 0.6rem;
+                font-size: 0.9rem;
+            }
+
+            #submit-btn, #next-btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button id="dark-mode-toggle">Toggle Dark Mode</button>
+    <header>
+        <h1>Lecture 15: Fuzzy Logic in Ontologies Quiz</h1>
+        <p>This quiz page was created by Eng: XE Ahmed Refat – EELU Student Sohag branch</p>
+    </header>
+    <div id="quiz-container">
+        <div id="progress-bar"><div id="progress"></div></div>
+        <div id="question-container">
+            <p id="question-text"></p>
+            <div id="options"></div>
+            <button id="submit-btn">Submit</button>
+            <button id="next-btn" style="display: none;">Next</button>
+            <div id="feedback"></div>
+        </div>
+        <div id="score-container">
+            <h2>Final Score</h2>
+            <p id="score-text"></p>
+            <p id="percentage-text"></p>
+            <p id="performance-text"></p>
+        </div>
+    </div>
+    <footer>
+        <p>© Eng: XE Ahmed Refat – EELU Sohag</p>
+    </footer>
+    <script>
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        const questions = [
+            // MCQs
+            {
+                question: "What is the main purpose of fuzzy ontologies compared to classical ontologies?",
+                options: ["To remove uncertainty", "To assign membership degrees to concepts and relationships", "To simplify relationships", "To eliminate fuzzy rules"],
+                correct: "B",
+                difficulty: "Easy",
+                explanation: "الأونتولوجي الضبابية (Fuzzy Ontologies) بتمد الأونتولوجي الكلاسيكية عن طريق إسناد درجات عضوية (Membership Degrees) للمفاهيم والعلاقات، عشان تتعامل مع عدم اليقين."
+            },
+            {
+                question: "In the university ontology example, what is the membership degree of Alice as a PreparedStudent?",
+                options: ["0.7", "0.8", "0.9", "1.0"],
+                correct: "B",
+                difficulty: "Easy",
+                explanation: "في مثال أونتولوجي الجامعة، درجة العضوية (Membership Degree) بتاعة أليس كـ PreparedStudent هي 0.8، زي ما ذُكر في المحاضرة."
+            },
+            {
+                question: "What is the formal language used to represent fuzzy ontologies?",
+                options: ["OWL", "RDF", "Fuzzy Description Logic (FDL)", "SPARQL"],
+                correct: "C",
+                difficulty: "Easy",
+                explanation: "اللغة الرسمية لتمثيل الأونتولوجي الضبابية هي Fuzzy Description Logic (FDL)، ودي بتمد OWL (Web Ontology Language) عشان تدعم المنطق الضبابي."
+            },
+            {
+                question: "In the university ontology, what is the defuzzified success percentage for a student with High Preparation (0.8) and Easy Course (0.4)?",
+                options: ["65%", "70%", "75%", "80%"],
+                correct: "C",
+                difficulty: "Medium",
+                explanation: "في مثال أونتولوجي الجامعة، الناتج الدقيق (Defuzzified Output) للنجاح هو 75% لما التحضير عالي (0.8) والكورس سهل (0.4)، محسوب بطريقة Center of Gravity."
+            },
+            {
+                question: "Which class in the Fuzzy Course Recommendation System ontology represents an individual learner?",
+                options: ["Course", "Instructor", "Student", "Recommendation"],
+                correct: "C",
+                difficulty: "Easy",
+                explanation: "كلاس Student في أونتولوجي نظام التوصية بالكورسات بيمثل المتعلم الفردي اللي بيطلب توصيات كورسات."
+            },
+            {
+                question: "What is the fuzzy attribute for a course's time commitment in the recommendation system ontology?",
+                options: ["DifficultyLevel", "Workload", "DeliveryMode", "Prerequisites"],
+                correct: "B",
+                difficulty: "Easy",
+                explanation: "الـ Workload هو السمة الضبابية (Fuzzy Attribute) اللي بتمثل التزام الوقت للكورس (Low, Medium, High) في أونتولوجي نظام التوصية."
+            },
+            {
+                question: "Which relationship indicates that a student is currently enrolled in a course?",
+                options: ["Teaches", "Recommends", "EnrolledIn", "HasPrerequisite"],
+                correct: "C",
+                difficulty: "Easy",
+                explanation: "العلاقة EnrolledIn بتشير إن طالب مسجل حاليًا في كورس معين، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "What type of membership function is used for the Poor AcademicPerformance fuzzy set?",
+                options: ["Trapezoidal", "Triangular", "Gaussian", "Sigmoidal"],
+                correct: "B",
+                difficulty: "Medium",
+                explanation: "الـ Poor AcademicPerformance في الأونتولوجي بتستخدم دالة عضوية مثلثية (Triangular Membership Function) مع القيم (0,0,0.4)."
+            },
+            {
+                question: "In the fuzzy inference process, what is the first step?",
+                options: ["Rule Evaluation", "Fuzzification", "Aggregation", "Defuzzification"],
+                correct: "B",
+                difficulty: "Easy",
+                explanation: "الخطوة الأولى في عملية الاستدلال الضبابي (Fuzzy Inference) هي Fuzzification، ودي بتحوّل المدخلات الدقيقة (Crisp Inputs) لقيم ضبابية."
+            },
+            {
+                question: "What is the consequent in the fuzzy rule 'IF interestLevel is High AND difficultyLevel is Moderate THEN suitabilityScore is High'?",
+                options: ["InterestLevel", "DifficultyLevel", "SuitabilityScore", "Expertise"],
+                correct: "C",
+                difficulty: "Easy",
+                explanation: "الـ Consequent في القاعدة الضبابية هو SuitabilityScore، لأنه الناتج (High) اللي بيترتب على الشروط (interestLevel و difficultyLevel)."
+            },
+            {
+                question: "What is the membership degree for Alice's interest in Math in the example student instance?",
+                options: ["0.5", "0.7", "0.9", "0.2"],
+                correct: "C",
+                difficulty: "Medium",
+                explanation: "في مثال الطالبة أليس، درجة العضوية (Membership Degree) للاهتمام بالرياضيات (Math) هي 0.9، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "Which fuzzy set is used for the Instructor's expertise attribute?",
+                options: ["Poor, Average, Excellent", "Novice, Competent, Expert", "Low, Medium, High", "Visual, Auditory, Kinesthetic"],
+                correct: "B",
+                difficulty: "Easy",
+                explanation: "سمة Expertise بتاعة الـ Instructor بتستخدم المجموعة الضبابية (Novice, Competent, Expert) في الأونتولوجي."
+            },
+            {
+                question: "What is the fuzzy output for suitabilityScore in the recommendation instance R001?",
+                options: ["Low: 0.1, Medium: 0.4, High: 0.5", "Low: 0.2, Medium: 0.7, High: 0.1", "Low: 0.3, Medium: 0.6, High: 0.1", "Low: 0.0, Medium: 0.5, High: 0.5"],
+                correct: "A",
+                difficulty: "Hard",
+                explanation: "في مثال التوصية R001، المخرج الضبابي لـ SuitabilityScore هو Low: 0.1, Medium: 0.4, High: 0.5، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "What does the Matches relationship represent in the ontology?",
+                options: ["Instructor teaching a course", "Course prerequisites", "Student-course compatibility", "Student enrollment"],
+                correct: "C",
+                difficulty: "Medium",
+                explanation: "العلاقة Matches بتمثل التوافق الضبابي (Fuzzy Compatibility) بين ملف الطالب ومتطلبات الكورس، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "What is the shape of the membership function for the Easy DifficultyLevel fuzzy set?",
+                options: ["Triangular", "Trapezoidal", "Gaussian", "Linear"],
+                correct: "B",
+                difficulty: "Medium",
+                explanation: "الـ Easy DifficultyLevel بتستخدم دالة عضوية شبه منحرفة (Trapezoidal Membership Function) مع القيم (0,0,0.2,0.4)."
+            },
+            {
+                question: "In the fuzzy rule evaluation, what operator is used for the AND condition?",
+                options: ["Maximum", "Minimum", "Average", "Sum"],
+                correct: "B",
+                difficulty: "Medium",
+                explanation: "في تقييم القواعد الضبابية، الـ AND بتستخدم المعامل Minimum عشان تحدد درجة الحقيقة للشروط الأولية (Antecedents)."
+            },
+            {
+                question: "What is the purpose of defuzzification in the fuzzy inference process?",
+                options: ["Convert crisp inputs to fuzzy values", "Evaluate fuzzy rules", "Convert fuzzy outputs to crisp values", "Define membership functions"],
+                correct: "C",
+                difficulty: "Easy",
+                explanation: "الـ Defuzzification هي العملية اللي بتحوّل المخرجات الضبابية (Fuzzy Outputs) لقيم دقيقة (Crisp Values) في نهاية الاستدلال الضبابي."
+            },
+            {
+                question: "Which constraint ensures that a course cannot be its own prerequisite?",
+                options: ["Uniqueness", "Fuzzy Range", "Prerequisite Consistency", "Recommendation Validity"],
+                correct: "C",
+                difficulty: "Medium",
+                explanation: "قيد Prerequisite Consistency بيضمن إن الكورس ميكونش شرط أساسي لنفسه، ويمنع المتطلبات الدورية (Circular Prerequisites)."
+            },
+            {
+                question: "What is the crisp input for Student Preparation in the university ontology example?",
+                options: ["85/100 exam score", "3/5 difficulty rating", "0.8 membership degree", "75% success"],
+                correct: "A",
+                difficulty: "Easy",
+                explanation: "المدخل الدقيق (Crisp Input) لتحضير الطالب في مثال أونتولوجي الجامعة هو 85/100 درجة امتحان."
+            },
+            {
+                question: "What is the delivery mode of the course Introduction to Calculus in the example instance?",
+                options: ["In-Person", "Hybrid", "Online", "Blended"],
+                correct: "C",
+                difficulty: "Medium",
+                explanation: "في مثال الكورس Introduction to Calculus، وضع التسليم (Delivery Mode) هو Online، زي ما ذُكر في الأونتولوجي."
+            },
+            // True/False
+            {
+                question: "Fuzzy ontologies assign membership degrees to concepts and relationships.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، الأونتولوجي الضبابية بتسند درجات عضوية (Membership Degrees) للمفاهيم والعلاقات عشان تتعامل مع عدم اليقين."
+            },
+            {
+                question: "Fuzzy Description Logic (FDL) is a simplified version of OWL.",
+                correct: "False",
+                difficulty: "Medium",
+                explanation: "غلط، Fuzzy Description Logic (FDL) بتمد OWL (Web Ontology Language) عشان تدعم المنطق الضبابي، مش تبسطه."
+            },
+            {
+                question: "The EnrolledIn relationship has a fuzzy attribute called progress.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، العلاقة EnrolledIn ليها سمة ضبابية اسمها Progress (Not Started, In Progress, Completed)، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The suitabilityScore in a Recommendation instance is a crisp value.",
+                correct: "False",
+                difficulty: "Medium",
+                explanation: "غلط، الـ SuitabilityScore في التوصية هو قيمة ضبابية (Fuzzy Value) بتكون Low, Medium, High، مش قيمة دقيقة."
+            },
+            {
+                question: "The fuzzy inference process includes four steps: Fuzzification, Rule Evaluation, Aggregation, and Defuzzification.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، عملية الاستدلال الضبابي (Fuzzy Inference) بتتضمن أربع خطوات: Fuzzification، Rule Evaluation، Aggregation، و Defuzzification."
+            },
+            {
+                question: "A course can be its own prerequisite in the ontology.",
+                correct: "False",
+                difficulty: "Medium",
+                explanation: "غلط، قيد Prerequisite Consistency بيمنع إن الكورس يكون شرط أساسي لنفسه، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The AcademicPerformance fuzzy set uses trapezoidal membership functions for all its values.",
+                correct: "False",
+                difficulty: "Medium",
+                explanation: "غلط، الـ AcademicPerformance بتستخدم دوال عضوية مثلثية (Triangular) لـ Poor, Average, Excellent، مش شبه منحرفة."
+            },
+            {
+                question: "The Recommends relationship links a recommendation to a course.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، العلاقة Recommends بتربط التوصية بالكورس اللي بيتم التوصية بيه، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The fuzzy AND operator in rule evaluation takes the maximum of antecedent strengths.",
+                correct: "False",
+                difficulty: "Medium",
+                explanation: "غلط، الـ AND في تقييم القواعد بياخد أقل قيمة (Minimum) لقوة الشروط الأولية، مش أعلى قيمة."
+            },
+            {
+                question: "Alice’s learningStyle has a membership degree of 0.8 for Visual in the example instance.",
+                correct: "True",
+                difficulty: "Medium",
+                explanation: "صح، في مثال الطالبة أليس، درجة العضوية لأسلوب التعلم Visual هي 0.8، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The Center of Gravity method is used for fuzzification in the university ontology example.",
+                correct: "False",
+                difficulty: "Easy",
+                explanation: "غلط، طريقة Center of Gravity بتستخدم للـ Defuzzification، مش Fuzzification، في مثال أونتولوجي الجامعة."
+            },
+            {
+                question: "The Matches relationship has a fuzzy attribute called matchScore.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، العلاقة Matches ليها سمة ضبابية اسمها matchScore (Low, Medium, High)، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The suitabilityScore for recommendation R001 has a High value of 0.4.",
+                correct: "False",
+                difficulty: "Hard",
+                explanation: "غلط، الـ SuitabilityScore للتوصية R001 ليها قيمة High بتساوي 0.5، مش 0.4، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The Instructor’s teachingStyle is a fuzzy attribute in the ontology.",
+                correct: "True",
+                difficulty: "Easy",
+                explanation: "صح، الـ TeachingStyle بتاعة الـ Instructor هي سمة ضبابية (Lecture-Based, Interactive, ProjectBased)، زي ما ذُكر في الأونتولوجي."
+            },
+            {
+                question: "The fuzzy inference process starts with rule evaluation.",
+                correct: "False",
+                difficulty: "Easy",
+                explanation: "غلط، عملية الاستدلال الضبابي بتبدأ بـ Fuzzification، مش Rule Evaluation، زي ما ذُكر في المحاضرة."
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        const totalQuestions = questions.length;
+
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options');
+        const submitBtn = document.getElementById('submit-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedback = document.getElementById('feedback');
+        const progress = document.getElementById('progress');
+        const quizContainer = document.getElementById('quiz-container');
+        const scoreContainer = document.getElementById('score-container');
+        const scoreText = document.getElementById('score-text');
+        const percentageText = document.getElementById('percentage-text');
+        const performanceText = document.getElementById('performance-text');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+
+        function loadQuestion() {
+            const q = questions[currentQuestion];
+            questionText.innerHTML = `${currentQuestion + 1}. ${escapeHTML(q.question)} (${q.difficulty})`;
+            optionsContainer.innerHTML = '';
+            if (q.options) {
+                q.options.forEach((option, index) => {
+                    const label = String.fromCharCode(65 + index); // A, B, C, D
+                    const div = document.createElement('div');
+                    div.className = 'option';
+                    div.innerHTML = `<input type="radio" name="answer" value="${label}"> ${label}. ${escapeHTML(option)}`;
+                    optionsContainer.appendChild(div);
+                });
+            } else {
+                ['True', 'False'].forEach(option => {
+                    const div = document.createElement('div');
+                    div.className = 'option';
+                    div.innerHTML = `<input type="radio" name="answer" value="${option}"> ${option}`;
+                    optionsContainer.appendChild(div);
+                });
+            }
+            submitBtn.style.display = 'inline-block';
+            nextBtn.style.display = 'none';
+            feedback.style.display = 'none';
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const percentage = ((currentQuestion + 1) / totalQuestions) * 100;
+            progress.style.width = `${percentage}%`;
+        }
+
+        submitBtn.addEventListener('click', () => {
+            const selected = document.querySelector('input[name="answer"]:checked');
+            if (!selected) {
+                feedback.style.display = 'block';
+                feedback.className = 'wrong';
+                feedback.innerHTML = 'من فضلك اختار إجابة!';
+                return;
+            }
+            const answer = selected.value;
+            const q = questions[currentQuestion];
+            const isCorrect = (q.options && answer === q.correct) || (!q.options && answer === q.correct);
+            feedback.style.display = 'block';
+            feedback.className = isCorrect ? 'correct' : 'wrong';
+            feedback.innerHTML = isCorrect ? 'صحيح! ' + q.explanation : 'غلط! ' + q.explanation;
+            if (isCorrect) score++;
+            submitBtn.style.display = 'none';
+            nextBtn.style.display = 'inline-block';
+        });
+
+        nextBtn.addEventListener('click', () => {
+            currentQuestion++;
+            if (currentQuestion < totalQuestions) {
+                loadQuestion();
+            } else {
+                showScore();
+            }
+        });
+
+        function showScore() {
+            quizContainer.style.display = 'none';
+            scoreContainer.style.display = 'block';
+            const percentage = (score / totalQuestions) * 100;
+            scoreText.innerHTML = `الدرجة النهائية: ${score} من ${totalQuestions}`;
+            percentageText.innerHTML = `النسبة: ${percentage.toFixed(2)}%`;
+            if (percentage >= 80) {
+                performanceText.innerHTML = 'ممتاز! عملت شغل عالي جداً، كمل كده!';
+            } else if (percentage >= 50) {
+                performanceText.innerHTML = 'كويس! بس فيه مجال للتحسين، ركز أكتر.';
+            } else {
+                performanceText.innerHTML = 'محتاج تذاكر أكتر! جرب تراجع الـ lecture تاني.';
+            }
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            darkModeToggle.textContent = document.body.classList.contains('dark-mode') ? 'Light Mode' : 'Dark Mode';
+        });
+
+        loadQuestion();
+    </script>
+</body>
+</html>
+```
